@@ -29,7 +29,7 @@ def sleep_end(message):
         sleep_time = sleep_data[user_id]['start_time']
         awake_time = datetime.now()
         sleep_duration = awake_time - sleep_time
-        hours_slept = sleep_duration.total_seconds() / 3600
+        hours_slept = round(sleep_duration.total_seconds() / 3600, 3)
         sleep_data[user_id]['duration'] = hours_slept
         bot.reply_to(message, f'Доброе утро! Ты проспал около {hours_slept} часов.\n\n\n'
                                     f'Что-бы записать данные о качестве сна нажми /quality')
@@ -67,7 +67,7 @@ def sleep_quality(message):
         # ключ - сегодняшняя дата без времени
         data_n = datetime.now()
         date_only = data_n.date()
-        if message.text == '😍' or message.text == '😌' or message.text == '🥱' or message.text == '😩' or message.text == '😑':
+        if message.text in dict_answer.keys():
             # записываем в наш словарь новый словарь grade и заносим туда оценки по дням
             sleep_data[user_id]['grade'] = {date_only: dict_answer[message.text]}
             bot.send_message(message.chat.id, f'Спасибо! Данные успешно записаны)\n\n\n'
