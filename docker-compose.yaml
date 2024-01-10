@@ -1,0 +1,10 @@
+version: '3.7'
+services:
+  campaign_postgres:
+    image: postgres:13
+    environment:
+      POSGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5432:5432'

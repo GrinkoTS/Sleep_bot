@@ -1,9 +1,11 @@
 import telebot
 from datetime import datetime
 from telebot import types
+import config
 
-
-bot = telebot.TeleBot('TOKEN')
+# импортируем токен tg-бота
+TOKEN = config.API_token
+bot = telebot.TeleBot(TOKEN)
 
 sleep_data = {}
 
@@ -63,19 +65,14 @@ def sleep_quality(message):
                        '😑': 1}
         # узнаем id-пользователя
         user_id = message.from_user.id
-        # находим ключ для записи оценки
-        # ключ - сегодняшняя дата без времени
-        data_n = datetime.now()
-        date_only = data_n.date()
         if message.text in dict_answer.keys():
             # записываем в наш словарь новый словарь grade и заносим туда оценки по дням
-            sleep_data[user_id]['grade'] = {date_only: dict_answer[message.text]}
+            sleep_data[user_id]['grade'] = dict_answer[message.text]
             bot.send_message(message.chat.id, f'Спасибо! Данные успешно записаны)\n\n\n'
                                                f'Если хочешь внести заметки о своем сне нажми /notes', reply_markup=a)
         else:
             # записываем в наш словарь новый словарь grade и заносим туда оценки по дням
-            sleep_data[user_id]['notes'] = {date_only: []}
-            sleep_data[user_id]['notes'][date_only].append(message.text)
+            sleep_data[user_id]['notes'] = message.text
             bot.send_message(message.chat.id, f'Отлично! Заметки о твоем сне успешно записаны!\n\n'
                                               f'Не забывай вечером записать время засыпания командой /sleep')
 
@@ -90,3 +87,92 @@ def sleep_notes(message):
 bot.polling()
 
 print(sleep_data)
+
+'''Часть 2. Заносим данные в БД'''
+
+import psycopg2
+
+try:
+    # пытаемся подключиться к базе данных
+    connection = psycopg2.connect(dbname='postgres',
+                                  user='postgres',
+                                  password='postgres',
+                                  host="localhost")
+
+    connection.autocommit = True
+
+    # создаю таблицу для записи id каждого подзователя
+    #with connection.cursor() as cursor:
+    #    cursor.execute(
+    #        """CREATE TABLE users(
+    #            id_user serial PRIMARY KEY,
+    #            id_tg INT);"""
+    #    )
+
+    #    print("[INFO] Table created successfully")
+
+    # delete a table
+    #with connection.cursor() as cursor:
+    #    cursor.execute(
+    #        """DROP TABLE users;"""
+    #    )
+
+    #    print("[INFO] Table was deleted")
+
+    # создаю таблицу для записи данных каждого пользователя
+    #with connection.cursor() as cursor:
+    #    cursor.execute(
+    #        """CREATE TABLE info_users(
+    #            info_id serial PRIMARY KEY,
+    #            start_time DATE,
+    #            duration DECIMAL(8,2),
+    #            grade INT,
+    #            notes VARCHAR(300),
+    #            id_user INT NOT NULL,
+    #            FOREIGN KEY (id_user) REFERENCES users (id_user) ON DELETE CASCADE);"""
+    #    )
+
+    #    print("[INFO] Table created successfully")
+
+    # находим всех пользователей приложения
+    users = list(sleep_data.keys())
+
+    # создаем для каждого пользователя свой id
+    for user in users:
+        user_db = (str(user),)
+        # добавляю записи в БД users
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """INSERT INTO users (id_tg)
+                VALUES (%s);""", user_db
+            )
+
+            print("[INFO] Data USERS was succefully inserted")
+
+        # находим данные по пользователю user
+        recording_day = str(sleep_data[user]['start_time']).split()[0]
+        duration = sleep_data[user]['duration']
+        grade = sleep_data[user].get('grade', '')
+        notes = sleep_data[user].get('notes', '')
+
+        # записываю данные по пользователю user в таблицу info_users
+        cursor = connection.cursor()
+        cursor.execute("""SELECT id_user FROM users WHERE id_tg = (%s);""", user_db)
+        id_user_db = cursor.fetchone()
+
+        values = (recording_day, duration, grade, notes, id_user_db)
+
+        cursor.execute("""INSERT INTO info_users (start_time, duration, grade, notes, id_user)
+                VALUES (%s, %s, %s, %s, %s);""", values)
+
+        print("[INFO] Data INFO_USERS was succefully inserted")
+
+
+except Exception as _ex:
+    print("[INFO] Error while working with PostgreSQL", _ex)
+finally:
+    if connection:
+        connection.close()
+        print("[INFO] PostgreSQL connection closed")
+
+
