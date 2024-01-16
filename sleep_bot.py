@@ -3,11 +3,14 @@ from datetime import datetime
 from telebot import types
 import config
 
+from db_repo import DbRepo
+
 # импортируем токен tg-бота
 TOKEN = config.API_token
 bot = telebot.TeleBot(TOKEN)
 
 sleep_data = {}
+db_repo = DbRepo()
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
@@ -18,7 +21,8 @@ def send_welcome(message):
 @bot.message_handler(commands=['sleep'])
 def sleep_start(message):
     user_id = message.from_user.id
-    sleep_data[user_id] = {'start_time': datetime.now()}
+    # sleep_data[user_id] = {'start_time': datetime.now()}
+    db_repo.update_user_by_id(user_id=user_id, ...)
     bot.reply_to(message, 'Спокойной ночи! Не забудь сообщить мне, когда проснешься командой /wake')
 
 
@@ -87,6 +91,8 @@ def sleep_notes(message):
 bot.polling()
 
 print(sleep_data)
+
+
 
 '''Часть 2. Заносим данные в БД'''
 
